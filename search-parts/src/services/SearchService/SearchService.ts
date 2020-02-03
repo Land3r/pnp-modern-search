@@ -104,6 +104,9 @@ class SearchService implements ISearchService {
      */
     public async search(query: string, pageNumber?: number, useOldSPIcons?: boolean): Promise<ISearchResults> {
 
+        // TODO
+        console.warn("Search done in KQL:" + query);
+
         let searchQuery: SearchQuery = {};
         let sortedRefiners: string[] = [];
         let queryModification: string = null;

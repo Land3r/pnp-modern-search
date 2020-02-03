@@ -100,6 +100,9 @@ export class PropertyPaneSearchManagedProperties implements IPropertyPaneField<I
 
     private onRender(elem: HTMLElement): void {
 
+        // TODO
+        console.log("Render of PropertyPaneSearch loaded");
+
         if (!this.elem) {
             this.elem = elem;
         }

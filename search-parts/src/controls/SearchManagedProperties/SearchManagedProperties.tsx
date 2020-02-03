@@ -94,6 +94,9 @@ export class SearchManagedProperties extends React.Component<ISearchManagedPrope
 
     public render() {
 
+        // TODO
+        console.log("Render of SearchManaged loaded");
+
         let renderCombo = null;
 
         if (!this.props.allowMultiSelect) {

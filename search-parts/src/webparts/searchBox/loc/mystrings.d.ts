@@ -58,7 +58,12 @@ declare interface ISearchBoxWebPartStrings {
     InlineTemplateEditPanelTitle: string;
     DefaultSuggestionGroupName: string;
     SharePointSuggestionGroupName: string;
-  }
+  },
+  SearchBoxCrawledPropertiesSettings: string;
+  SearchBoxCrawledPropertiesSettingsDescription: string;
+  SearchBoxCrawledPropertiesSettingsLabel: string;
+  SearchBoxCrawledPropertiesSettingsLabelWarning: string;
+  NewCrawledPropertyMappingBtnLabel: string;
 }
 
 declare module 'SearchBoxWebPartStrings' {

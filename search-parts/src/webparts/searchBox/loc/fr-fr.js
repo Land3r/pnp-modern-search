@@ -57,6 +57,11 @@ define([], function() {
       "InlineTemplateEditPanelTitle": "Modifier le modèle de suggestion",
       "DefaultSuggestionGroupName": "Recommandé",
       "SharePointSuggestionGroupName": "D'autres ont la recherche de",
-    }
+    },
+    "SearchBoxCrawledPropertiesSettings": "Gestion des Propriétés Gérées",
+    "SearchBoxCrawledPropertiesSettingsDescription": "Permet aux utilisateurs d'avoir des champs de recherches pour les propriétés gérées.",
+    "SearchBoxCrawledPropertiesSettingsLabel": "Activer la gestion des propriétés gérées",
+    "SearchBoxCrawledPropertiesSettingsLabelWarning": "Attention: Si vous désactivez la gestion des propriétés gérées après l'avoir configuré, la configuration sera remise à zéro.",
+    "NewCrawledPropertyMappingBtnLabel": "Ajouter un champs"
   }
 });

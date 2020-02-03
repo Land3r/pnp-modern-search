@@ -13,6 +13,8 @@ interface ISearchBoxWebPartProps {
     NlpServiceUrl: string;
     enableNlpService: boolean;
     enableDebugMode: boolean;
+    enableCrawledPropertiesMapping: boolean;
+    crawledPropertyFields: string[];
     isStaging: boolean;
     defaultQueryKeywords: DynamicProperty<string>;
     placeholderText: string;

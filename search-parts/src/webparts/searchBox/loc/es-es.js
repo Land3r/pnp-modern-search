@@ -57,6 +57,11 @@ define([], function () {
       "InlineTemplateEditPanelTitle": "Editar plantilla de sugerencia",
       "DefaultSuggestionGroupName": "Recomienda",
       "SharePointSuggestionGroupName": "Otros tienen la búsqueda de",
-    }
+    },
+    "SearchBoxCrawledPropertiesSettings": "Crawled Properties Mapping",
+    "SearchBoxCrawledPropertiesSettingsDescription": "Allow users to have discrete search fields for crawled properties.",
+    "SearchBoxCrawledPropertiesSettingsLabel": "Enable crawled properties mapping",
+    "SearchBoxCrawledPropertiesSettingsLabelWarning": "Note that you will lose your current configuration if you disable the crawled properties mapping.",
+    "NewCrawledPropertyMappingBtnLabel": "Add new field"
   }
 });

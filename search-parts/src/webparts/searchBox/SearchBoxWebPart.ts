@@ -16,6 +16,7 @@ import {
   PropertyPaneLabel,
   PropertyPaneTextField,
   PropertyPaneToggle,
+  PropertyPaneButton,
   DynamicDataSharedDepth
 } from "@microsoft/sp-property-pane";
 import * as strings from 'SearchBoxWebPartStrings';
@@ -44,6 +45,11 @@ import { Toggle } from 'office-ui-fabric-react/lib/Toggle';
 import { ThemeProvider, ThemeChangedEventArgs, IReadonlyTheme } from '@microsoft/sp-component-base';
 import { isEqual } from '@microsoft/sp-lodash-subset';
 
+import { IExtensibilityLibrary } from "../../services/ExtensibilityService/IExtensibilityLibrary";
+import { CrawledPropertiesModifier } from "../../services/CrawledPropertiesService/CrawledPropertiesModifier";
+import { IComponentDefinition } from "../../services/ExtensibilityService/IComponentDefinition";
+import { IQueryModifierDefinition } from "../../services/ExtensibilityService/IQueryModifierDefinition";
+
 export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWebPartProps> implements IDynamicDataCallables {
 
   private _searchQuery: ISearchQuery;
@@ -59,6 +65,8 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
   private _propertyFieldCollectionData = null;
   private _customCollectionFieldType = null;
   private _themeVariant: IReadonlyTheme;
+  
+  private _crawledProperties: number = 0;
 
   constructor() {
     super();
@@ -80,7 +88,7 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
 
     let inputValue = this.properties.defaultQueryKeywords.tryGetValue();
 
-    if (inputValue && typeof(inputValue) === 'string') {
+    if (inputValue && typeof (inputValue) === 'string') {
 
       // Notify subscriber a new value if available
       this._searchQuery.rawInputValue = decodeURIComponent(inputValue);
@@ -103,6 +111,8 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
         searchService: this._searchService,
         enableDebugMode: this.properties.enableDebugMode,
         enableNlpService: this.properties.enableNlpService,
+        enableCrawledPropertiesMapping: this.properties.enableCrawledPropertiesMapping,
+        crawledPropertyFields: this.properties.crawledPropertyFields,
         isStaging: this.properties.isStaging,
         NlpService: this._nlpService,
         placeholderText: this.properties.placeholderText,
@@ -120,8 +130,8 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
   public getPropertyDefinitions(): ReadonlyArray<IDynamicDataPropertyDefinition> {
     return [
       {
-          id: SearchComponentType.SearchBoxWebPart,
-          title: strings.DynamicData.SearchQueryPropertyLabel
+        id: SearchComponentType.SearchBoxWebPart,
+        title: strings.DynamicData.SearchQueryPropertyLabel
       },
     ];
   }
@@ -132,26 +142,26 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
    */
   public getAnnotatedPropertyValue(propertyId: string) {
 
-      switch (propertyId) {
+    switch (propertyId) {
 
-          case 'searchQuery':
+      case 'searchQuery':
 
-              const annotatedPropertyValue = {
-                  sampleValue: {
-                      'rawInputValue': "*",
-                      'enhancedQuery': '(rawQuery) XRANK(cb=500) owsTaxIdrawQuery:5eb0b270-f8ce-42e9-866f-73b1466a26ac',
-                  },
-                  metadata: {
-                      'rawInputValue': { title: strings.DynamicData.RawInputValuePropertyLabel},
-                      'enhancedQuery': { title: strings.DynamicData.EnhancedQueryPropertyLabel },
-                  }
-              };
+        const annotatedPropertyValue = {
+          sampleValue: {
+            'rawInputValue': "*",
+            'enhancedQuery': '(rawQuery) XRANK(cb=500) owsTaxIdrawQuery:5eb0b270-f8ce-42e9-866f-73b1466a26ac',
+          },
+          metadata: {
+            'rawInputValue': { title: strings.DynamicData.RawInputValuePropertyLabel },
+            'enhancedQuery': { title: strings.DynamicData.EnhancedQueryPropertyLabel },
+          }
+        };
 
-              return annotatedPropertyValue;
+        return annotatedPropertyValue;
 
-          default:
-              throw new Error('Bad property id');
-      }
+      default:
+        throw new Error('Bad property id');
+    }
   }
 
   /**
@@ -162,11 +172,11 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
 
     switch (propertyId) {
 
-        case 'searchQuery':
-            return this._searchQuery;
+      case 'searchQuery':
+        return this._searchQuery;
 
-        default:
-            throw new Error('Bad property id');
+      default:
+        throw new Error('Bad property id');
     }
   }
 
@@ -177,6 +187,8 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
 
     this.initSearchService();
     this.initNlpService();
+
+    // TODO: this.initCrawledPropertiesMapping();
     this.initThemeVariant();
 
     this._bindHashChange();
@@ -210,8 +222,12 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
               groupFields: this._getSearchBehaviorOptionsFields()
             },
             {
-                groupName: strings.SearchBoxQueryNlpSettings,
-                groupFields: this._getSearchQueryOptimizationFields()
+              groupName: strings.SearchBoxQueryNlpSettings,
+              groupFields: this._getSearchQueryOptimizationFields()
+            },
+            {
+              groupName: strings.SearchBoxCrawledPropertiesSettings,
+              groupFields: this._getSearchCrawledPropertiesFields()
             },
           ],
           displayGroupsAsAccordion: true
@@ -256,7 +272,7 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
         if (paramType === 'fragment') {
           window.history.pushState(undefined, undefined, `#${searchQuery.rawInputValue}`);
         }
-        else if(paramType.startsWith('queryParameters')) {
+        else if (paramType.startsWith('queryParameters')) {
           const paramChunks = paramType.split('.');
           const queryTextParam = paramChunks.length === 2 ? paramChunks[1] : 'q';
           const newUrl = UrlHelper.addOrReplaceQueryStringParam(window.location.href, queryTextParam, searchQuery.rawInputValue);
@@ -268,7 +284,7 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
       }
 
     }
-}
+  }
 
   /**
    * Verifies if the string is a correct URL
@@ -297,7 +313,7 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
           await this._serviceHelper.ensureUrlResovles(value);
           return '';
         } catch (errorMessage) {
-            return Text.format(strings.UrlNotResolvedErrorMessage, value, errorMessage);
+          return Text.format(strings.UrlNotResolvedErrorMessage, value, errorMessage);
         }
       } else {
         return '';
@@ -310,11 +326,11 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
    */
   private initSearchService() {
 
-      if (this.properties.enableQuerySuggestions) {
-        if (Environment.type === EnvironmentType.Local ) {
-          this._searchService = new MockSearchService();
-        } else {
-          this._searchService = new SearchService(this.context.pageContext, this.context.spHttpClient);
+    if (this.properties.enableQuerySuggestions) {
+      if (Environment.type === EnvironmentType.Local) {
+        this._searchService = new MockSearchService();
+      } else {
+        this._searchService = new SearchService(this.context.pageContext, this.context.spHttpClient);
         return "";
       }
     }
@@ -326,12 +342,12 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
   private initNlpService() {
 
     if (this.properties.enableNlpService && this.properties.NlpServiceUrl) {
-        if (Environment.type === EnvironmentType.Local) {
-            this._nlpService = new MockNlpService();
-            this.properties.NlpServiceUrl = 'https://localhost:7071/api/example';
-        } else {
-            this._nlpService = new NlpService(this.context, this.properties.NlpServiceUrl);
-        }
+      if (Environment.type === EnvironmentType.Local) {
+        this._nlpService = new MockNlpService();
+        this.properties.NlpServiceUrl = 'https://localhost:7071/api/example';
+      } else {
+        this._nlpService = new NlpService(this.context, this.properties.NlpServiceUrl);
+      }
     }
   }
 
@@ -344,9 +360,9 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
   }
 
   private async getAllSuggestionProviders(): Promise<ISuggestionProviderDefinition<any>[]> {
-    const [ defaultProviders, customProviders ] = await Promise.all([
-        this.getDefaultSuggestionProviders(),
-        this.getCustomSuggestionProviders()
+    const [defaultProviders, customProviders] = await Promise.all([
+      this.getDefaultSuggestionProviders(),
+      this.getCustomSuggestionProviders()
     ]);
 
     //Track if we have any custom suggestion providers
@@ -356,26 +372,26 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
 
     //Merge all providers together and set defaults
     const savedProviders = this.properties.suggestionProviders && this.properties.suggestionProviders.length > 0 ? this.properties.suggestionProviders : [];
-    const providerDefinitions = [ ...defaultProviders, ...customProviders ].map(provider => {
-        const existingSavedProvider = savedProviders.find(sp => sp.providerName === provider.providerName);
+    const providerDefinitions = [...defaultProviders, ...customProviders].map(provider => {
+      const existingSavedProvider = savedProviders.find(sp => sp.providerName === provider.providerName);
 
-        provider.providerEnabled = existingSavedProvider && undefined !== existingSavedProvider.providerEnabled
-                                    ? existingSavedProvider.providerEnabled
-                                    : undefined !== provider.providerEnabled
-                                      ? provider.providerEnabled
-                                      : true;
+      provider.providerEnabled = existingSavedProvider && undefined !== existingSavedProvider.providerEnabled
+        ? existingSavedProvider.providerEnabled
+        : undefined !== provider.providerEnabled
+          ? provider.providerEnabled
+          : true;
 
-        return provider;
+      return provider;
     });
     return providerDefinitions;
   }
 
   private async getDefaultSuggestionProviders(): Promise<ISuggestionProviderDefinition<any>[]> {
     return [{
-        providerName: SharePointDefaultSuggestionProvider.ProviderName,
-        providerDisplayName: SharePointDefaultSuggestionProvider.ProviderDisplayName,
-        providerDescription: SharePointDefaultSuggestionProvider.ProviderDescription,
-        providerClass: SharePointDefaultSuggestionProvider
+      providerName: SharePointDefaultSuggestionProvider.ProviderName,
+      providerDisplayName: SharePointDefaultSuggestionProvider.ProviderDisplayName,
+      providerDescription: SharePointDefaultSuggestionProvider.ProviderDescription,
+      providerClass: SharePointDefaultSuggestionProvider
     }];
   }
 
@@ -388,8 +404,8 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
     // Load extensibility additions
     if (extensibilityLibrary && extensibilityLibrary.getCustomSuggestionProviders) {
 
-        // Add custom suggestion providers if any
-        customSuggestionProviders = extensibilityLibrary.getCustomSuggestionProviders();
+      // Add custom suggestion providers if any
+      customSuggestionProviders = extensibilityLibrary.getCustomSuggestionProviders();
     }
 
     return customSuggestionProviders;
@@ -437,8 +453,8 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
   protected async loadPropertyPaneResources(): Promise<void> {
 
     const { PropertyFieldCollectionData, CustomCollectionFieldType } = await import(
-        /* webpackChunkName: 'search-property-pane' */
-        '@pnp/spfx-property-controls/lib/PropertyFieldCollectionData'
+      /* webpackChunkName: 'search-property-pane' */
+      '@pnp/spfx-property-controls/lib/PropertyFieldCollectionData'
     );
     this._propertyFieldCollectionData = PropertyFieldCollectionData;
     this._customCollectionFieldType = CustomCollectionFieldType;
@@ -451,10 +467,10 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
 
     // Sets up search query fields
     let searchQueryConfigFields: IPropertyPaneField<any>[] = [
-        PropertyPaneCheckbox('useDynamicDataSource', {
-            checked: false,
-            text: strings.DynamicData.UseDynamicDataSourceLabel,
-        })
+      PropertyPaneCheckbox('useDynamicDataSource', {
+        checked: false,
+        text: strings.DynamicData.UseDynamicDataSourceLabel,
+      })
     ];
 
     if (this.properties.useDynamicDataSource) {
@@ -474,14 +490,14 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
     }
 
     return searchQueryConfigFields;
-}
+  }
 
   /**
    * Determines the group fields for the search options inside the property pane
    */
   private _getSearchBehaviorOptionsFields(): IPropertyPaneField<any>[] {
 
-    let searchBehaviorOptionsFields: IPropertyPaneField<any>[]  = [
+    let searchBehaviorOptionsFields: IPropertyPaneField<any>[] = [
       PropertyPaneToggle("enableQuerySuggestions", {
         checked: false,
         label: strings.SearchBoxEnableQuerySuggestions
@@ -501,40 +517,42 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
           label: strings.SuggestionProviders.SuggestionProvidersLabel,
           value: this.properties.suggestionProviders,
           fields: [
-              {
-                  id: 'providerEnabled',
-                  title: strings.SuggestionProviders.EnabledPropertyLabel,
-                  type: this._customCollectionFieldType.custom,
-                  onCustomRender: (field, value, onUpdate, item, itemId) => {
-                    return (
-                      React.createElement("div", null,
-                        React.createElement(Toggle, { key: itemId, checked: value, onChange: (evt, checked) => {
-                          onUpdate(field.id, checked);
-                        }})
-                      )
-                    );
-                  }
-              },
-              {
-                  id: 'providerDisplayName',
-                  title: strings.SuggestionProviders.ProviderNamePropertyLabel,
-                  type: this._customCollectionFieldType.custom,
-                  onCustomRender: (field, value, onUpdate, item, itemId) => {
-                    return (
-                      React.createElement("div", { style: { 'fontWeight': 600 } }, value)
-                    );
-                  }
-              },
-              {
-                  id: 'providerDescription',
-                  title: strings.SuggestionProviders.ProviderDescriptionPropertyLabel,
-                  type: this._customCollectionFieldType.custom,
-                  onCustomRender: (field, value, onUpdate, item, itemId) => {
-                    return (
-                      React.createElement("div", null, value)
-                    );
-                  }
+            {
+              id: 'providerEnabled',
+              title: strings.SuggestionProviders.EnabledPropertyLabel,
+              type: this._customCollectionFieldType.custom,
+              onCustomRender: (field, value, onUpdate, item, itemId) => {
+                return (
+                  React.createElement("div", null,
+                    React.createElement(Toggle, {
+                      key: itemId, checked: value, onChange: (evt, checked) => {
+                        onUpdate(field.id, checked);
+                      }
+                    })
+                  )
+                );
               }
+            },
+            {
+              id: 'providerDisplayName',
+              title: strings.SuggestionProviders.ProviderNamePropertyLabel,
+              type: this._customCollectionFieldType.custom,
+              onCustomRender: (field, value, onUpdate, item, itemId) => {
+                return (
+                  React.createElement("div", { style: { 'fontWeight': 600 } }, value)
+                );
+              }
+            },
+            {
+              id: 'providerDescription',
+              title: strings.SuggestionProviders.ProviderDescriptionPropertyLabel,
+              type: this._customCollectionFieldType.custom,
+              onCustomRender: (field, value, onUpdate, item, itemId) => {
+                return (
+                  React.createElement("div", null, value)
+                );
+              }
+            }
           ]
         })
       ]);
@@ -560,7 +578,7 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
           onGetErrorMessage: this._validatePageUrl.bind(this)
         }),
         PropertyPaneDropdown('openBehavior', {
-          label:  strings.SearchBoxPageOpenBehaviorLabel,
+          label: strings.SearchBoxPageOpenBehaviorLabel,
           options: [
             { key: PageOpenBehavior.Self, text: strings.SearchBoxSameTabOpenBehavior },
             { key: PageOpenBehavior.NewTab, text: strings.SearchBoxNewTabOpenBehavior }
@@ -569,7 +587,7 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
           selectedKey: this.properties.openBehavior
         }),
         PropertyPaneDropdown('queryPathBehavior', {
-          label:  strings.SearchBoxQueryPathBehaviorLabel,
+          label: strings.SearchBoxQueryPathBehaviorLabel,
           options: [
             { key: QueryPathBehavior.URLFragment, text: strings.SearchBoxUrlFragmentQueryPathBehavior },
             { key: QueryPathBehavior.QueryParameter, text: strings.SearchBoxQueryStringQueryPathBehavior }
@@ -606,37 +624,94 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
    */
   private _getSearchQueryOptimizationFields(): IPropertyPaneField<any>[] {
 
-      let searchQueryOptimizationFields: IPropertyPaneField<any>[] = [
-          PropertyPaneLabel("", {
-              text: strings.SearchBoxQueryNlpSettingsDescription
-          }),
-          PropertyPaneToggle("enableNlpService", {
-              checked: false,
-              label: strings.SearchBoxUserQueryNlpLabel,
-          })
-      ];
+    let searchQueryOptimizationFields: IPropertyPaneField<any>[] = [
+      PropertyPaneLabel("", {
+        text: strings.SearchBoxQueryNlpSettingsDescription
+      }),
+      PropertyPaneToggle("enableNlpService", {
+        checked: false,
+        label: strings.SearchBoxUserQueryNlpLabel,
+      })
+    ];
 
-      if (this.properties.enableNlpService) {
+    if (this.properties.enableNlpService) {
 
-          searchQueryOptimizationFields.push(
-              PropertyPaneTextField("NlpServiceUrl", {
-                  label: strings.SearchBoxServiceUrlLabel,
-                  disabled: !this.properties.enableNlpService,
-                  onGetErrorMessage: this._validateServiceUrl.bind(this),
-                  description: Text.format(strings.SearchBoxServiceUrlDescription, window.location.host)
-              }),
-              PropertyPaneToggle("enableDebugMode", {
-                  label: strings.SearchBoxUseDebugModeLabel,
-                  disabled: !this.properties.enableNlpService,
-              }),
-              PropertyPaneToggle("isStaging", {
-                label: strings.SearchBoxUseStagingEndpoint,
-                disabled: !this.properties.enableNlpService,
-            }),
-          );
-      }
+      searchQueryOptimizationFields.push(
+        PropertyPaneTextField("NlpServiceUrl", {
+          label: strings.SearchBoxServiceUrlLabel,
+          disabled: !this.properties.enableNlpService,
+          onGetErrorMessage: this._validateServiceUrl.bind(this),
+          description: Text.format(strings.SearchBoxServiceUrlDescription, window.location.host)
+        }),
+        PropertyPaneToggle("enableDebugMode", {
+          label: strings.SearchBoxUseDebugModeLabel,
+          disabled: !this.properties.enableNlpService,
+        }),
+        PropertyPaneToggle("isStaging", {
+          label: strings.SearchBoxUseStagingEndpoint,
+          disabled: !this.properties.enableNlpService,
+        }),
+      );
+    }
 
-      return searchQueryOptimizationFields;
+    return searchQueryOptimizationFields;
+  }
+
+  /**
+   * Determines the group fields for the crawled properties mapping inside the property pane
+   */
+  private _getSearchCrawledPropertiesFields(): IPropertyPaneField<any>[] {
+
+    let searchCrawledPropertiesFields: IPropertyPaneField<any>[] = [
+      PropertyPaneLabel("", {
+        text: strings.SearchBoxCrawledPropertiesSettingsDescription
+      }),
+      PropertyPaneToggle("enableCrawledPropertiesMapping", {
+        checked: false,
+        label: strings.SearchBoxCrawledPropertiesSettingsLabel
+      }),
+      PropertyPaneLabel("", {
+        text: this.properties.enableCrawledPropertiesMapping ? strings.SearchBoxCrawledPropertiesSettingsLabelWarning : ''
+      }),
+    ];
+
+    if (this.properties.enableCrawledPropertiesMapping) {
+
+      searchCrawledPropertiesFields.push(
+        PropertyPaneHorizontalRule(),
+        PropertyPaneButton("newCrawledPropertyField", {
+          text: strings.NewCrawledPropertyMappingBtnLabel,
+          icon: "Add",
+          onClick: (value) => {
+
+            console.log(value);
+
+            searchCrawledPropertiesFields.push(
+              PropertyPaneToggle("enableCrawledPropertiesMapping", {
+                checked: false,
+                label: strings.SearchBoxCrawledPropertiesSettingsLabel
+              })
+            );
+
+            return value + 1;
+          }
+        }),
+        PropertyPaneHorizontalRule()
+      );
+
+      // this.properties.crawledPropertyFields?.forEach(element => {
+
+      // });
+    }
+
+    return searchCrawledPropertiesFields;
+  }
+
+  /**
+   * Adds a new 
+   */
+  private _addNewCrawledPropertyMapping() {
+
   }
 
   /**
@@ -644,10 +719,10 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
    */
   private _bindHashChange() {
     if (this.properties.defaultQueryKeywords.tryGetSource() && this.properties.defaultQueryKeywords.reference.localeCompare('PageContext:UrlData:fragment') === 0) {
-        // Manually subscribe to hash change since the default property doesn't
-        window.addEventListener('hashchange', this.render);
+      // Manually subscribe to hash change since the default property doesn't
+      window.addEventListener('hashchange', this.render);
     } else {
-        window.removeEventListener('hashchange', this.render);
+      window.removeEventListener('hashchange', this.render);
     }
   }
 
@@ -672,8 +747,41 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
    */
   private _handleThemeChangedEvent(args: ThemeChangedEventArgs): void {
     if (!isEqual(this._themeVariant, args.theme)) {
-        this._themeVariant = args.theme;
-        this.render();
+      this._themeVariant = args.theme;
+      this.render();
     }
+  }
+}
+
+export class MyCompanyLibraryLibrary implements IExtensibilityLibrary {
+
+  /**
+   * Returns custom web components
+   */
+  public getCustomWebComponents(): IComponentDefinition<any>[]
+  {
+    return [
+    ];
+  }
+
+  /**
+   * Returns custom suggestion providers
+   */
+  public getCustomSuggestionProviders(): ISuggestionProviderDefinition<any>[]
+  {
+    return [
+    ];
+  }
+
+  /**
+   * Returns query modifier
+   */
+  public getQueryModifier(): IQueryModifierDefinition<any>
+  {
+    return {
+      displayName: CrawledPropertiesModifier.DisplayName,
+      description: CrawledPropertiesModifier.Description,
+      class: CrawledPropertiesModifier
+    };
   }
 }
