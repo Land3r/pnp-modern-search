@@ -33,6 +33,7 @@ import MockNlpService from '../../services/NlpService/MockNlpService';
 import NlpService from '../../services/NlpService/NlpService';
 import { PageOpenBehavior, QueryPathBehavior, UrlHelper } from '../../helpers/UrlHelper';
 import SearchBoxContainer from './components/SearchBoxContainer/SearchBoxContainer';
+import SearchTermContainer from './components/SearchTermContainer/SearchTermContainer';
 import { SearchComponentType } from '../../models/SearchComponentType';
 import IExtensibilityService from '../../services/ExtensibilityService/IExtensibilityService';
 import { ExtensibilityService } from '../../services/ExtensibilityService/ExtensibilityService';
@@ -276,6 +277,8 @@ export default class SearchBoxWebPart extends BaseClientSideWebPart<ISearchBoxWe
           const paramChunks = paramType.split('.');
           const queryTextParam = paramChunks.length === 2 ? paramChunks[1] : 'q';
           const newUrl = UrlHelper.addOrReplaceQueryStringParam(window.location.href, queryTextParam, searchQuery.rawInputValue);
+
+console.error('Will push url to ' + newUrl);
 
           if (window.location.href !== newUrl) {
             window.history.pushState({ path: newUrl }, undefined, newUrl);

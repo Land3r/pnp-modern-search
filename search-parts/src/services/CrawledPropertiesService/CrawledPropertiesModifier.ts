@@ -1,5 +1,6 @@
 import { BaseQueryModifier } from '../ExtensibilityService/BaseQueryModifier'
 import { IQueryModifierInput, IQueryModification } from '../../models/IQueryModification';
+import { Log } from "@microsoft/sp-core-library";
 
 export class CrawledPropertiesModifier extends BaseQueryModifier {
 
@@ -12,7 +13,7 @@ export class CrawledPropertiesModifier extends BaseQueryModifier {
 
     public async modifyQuery(query: IQueryModifierInput): Promise<IQueryModification> {
 
-        console.error("I am loaded and query is:"+query.queryText);
+        Log.info("Test", "I am loaded and query is:" + query.queryText);
 
         // e.g. Always return docx files
         const newQueryText = `${query.queryText} fileextension:docx`;

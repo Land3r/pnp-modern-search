@@ -14,7 +14,10 @@ export class CustomQueryModifier extends BaseQueryModifier  {
       return new Promise<IQueryModification>((resolve, reject) => {
           // Simulate API call delay of 1 second
           setTimeout(() => {
-              const newQueryText = `${query.queryText} fileextension:docx`;
+              //const newQueryText = `${query.queryText} fileextension:docx`;
+
+              // TODO
+              const newQueryText = `${query.queryText} AND PROPNAME:'VALUE'`
 
               console.log(`[${CustomQueryModifier.DisplayName}] Original query '${query.queryText}' modified to '${newQueryText}'`);
 
