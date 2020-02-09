@@ -11,6 +11,9 @@ import * as strings from 'SearchCrawledBoxWebPartStrings';
 import SearchCrawledBox from './components/SearchCrawledBox';
 import { ISearchCrawledBoxProps } from './components/ISearchCrawledBoxProps';
 
+
+import SearchBoxAutoComplete from '../../components/SearchBoxAutoComplete/SearchBoxAutoComplete';
+
 export interface ISearchCrawledBoxWebPartProps {
   description: string;
 }
